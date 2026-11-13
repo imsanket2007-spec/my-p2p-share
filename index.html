@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>My P2P Share</title>
+
+<script src="https://unpkg.com/peerjs@1.5.5/dist/peerjs.min.js"></script>
+
+<style>
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background: #101827;
+  color: white;
+  text-align: center;
+}
+
+.container {
+  max-width: 500px;
+  margin: 50px auto;
+  padding: 25px;
+}
+
+h1 {
+  color: #38bdf8;
+}
+
+.card {
+  background: #1e293b;
+  padding: 22px;
+  border-radius: 15px;
+  margin: 20px 0;
+}
+
+input, button {
+  width: 100%;
+  padding: 13px;
+  margin: 9px 0;
+  border-radius: 8px;
+  border: none;
+  font-size: 15px;
+}
+
+input {
+  background: white;
+  color: black;
+}
+
+button {
+  background: #0284c7;
+  color: white;
+  cursor: pointer;
+}
+
+button:hover {
+  background: #0369a1;
+}
+
+#myId {
+  color: #38bdf8;
+  word-break: break-all;
+}
+
+#status {
+  color: #4ade80;
+}
+
+progress {
+  width: 100%;
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<h1>My P2P Share</h1>
+<p>Fast and direct file sharing</p>
+
+<div class="card">
+<h3>Your Device ID</h3>
+<p id="myId">Connecting...</p>
+<button onclick="copyID()">Copy My ID</button>
+</div>
+
+<div class="card">
+<h3>Connect Device</h3>
+<input id="remoteId" placeholder="Enter receiver's ID">
+<button onclick="connectPeer()">Connect</button>
+</div>
+
+<div class="card">
+<h3>Send File</h3>
+<input type="file" id="fileInput">
+<button onclick="sendFile()">Send File</button>
+</div>
+
+<div class="card">
+<h3>Transfer Status</h3>
+<p id="status">Waiting for connection...</p>
+<progress id="progress" value="0" max="100"></progress>
+</div>
+
+</div>
+
+<script>
+
+let peer = new Peer();
+let connection = null;
+let receivedChunks = [];
+let receivedSize = 0;
+let incomingFile = null;
+
+const statusText = document.getElementById("status");
+const progress = document.getElementById("progress");
+
+peer.on("open", function(id) {
+    document.getElementById("myId").innerText = id;
+    statusText.innerText = "Ready to connect";
+});
+
+peer.on("connection", function(conn) {
+    connection = conn;
+    setupConnection(conn);
+});
+
+peer.on("error", function(error) {
+    statusText.innerText = "Error: " + error.type;
+});
+
+function connectPeer() {
+
+    let id = document.getElementById("remoteId").value.trim();
+
+    if (!id) {
+        alert("Enter device ID");
+        return;
+    }
+
+    connection = peer.connect(id);
+    setupConnection(connection);
+
+    statusText.innerText = "Connecting...";
+}
+
+function setupConnection(conn) {
+
+    conn.on("open", function() {
+        statusText.innerText = "Connected successfully!";
+    });
+
+    conn.on("data", function(data) {
+        receiveData(data);
+    });
+
+    conn.on("close", function() {
+        statusText.innerText = "Connection closed";
+        connection = null;
+    });
+
+    conn.on("error", function(error) {
+        statusText.innerText = "Connection error";
+    });
+}
+
+async function sendFile() {
+
+    if (!connection || !connection.open) {
+        alert("Connect to another device first");
+        return;
+    }
+
+    const file = document.getElementById("fileInput").files[0];
+
+    if (!file) {
+        alert("Select a file first");
+        return;
+    }
+
+    if (file.size > 100 * 1024 * 1024) {
+        alert("This beginner version supports files up to 100 MB.");
+        return;
+    }
+
+    connection.send({
+        type: "file-meta",
+        name: file.name,
+        size: file.size,
+        mime: file.type || "application/octet-stream"
+    });
+
+    const chunkSize = 16 * 1024;
+    let sent = 0;
+
+    statusText.innerText = "Sending file...";
+
+    while (sent < file.size) {
+
+        if (!connection || !connection.open) {
+            statusText.innerText = "Connection lost";
+            return;
+        }
+
+        const chunk = await file.slice(
+            sent, sent + chunkSize
+        ).arrayBuffer();
+
+        connection.send(chunk);
+
+        sent += chunk.byteLength;
+
+        progress.value = (sent / file.size) * 100;
+
+        await new Promise(resolve => setTimeout(resolve, 5));
+    }
+
+    connection.send({ type: "file-end" });
+
+    statusText.innerText = "File sent successfully!";
+}
+
+function receiveData(data) {
+
+    if (data && data.type === "file-meta") {
+
+        incomingFile = data;
+        receivedChunks = [];
+        receivedSize = 0;
+
+        progress.value = 0;
+
+        statusText.innerText = "Receiving: " + data.name;
+
+        return;
+    }
+
+    if (data && data.type === "file-end") {
+
+        if (!incomingFile) return;
+
+        const blob = new Blob(receivedChunks, {
+            type: incomingFile.mime
+        });
+
+        const url = URL.createObjectURL(blob);
+
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = incomingFile.name;
+        link.click();
+
+        setTimeout(() => URL.revokeObjectURL(url), 60000);
+
+        statusText.innerText = "File received successfully!";
+
+        receivedChunks = [];
+        incomingFile = null;
+
+        return;
+    }
+
+    if (incomingFile && data instanceof ArrayBuffer) {
+
+        receivedChunks.push(data);
+        receivedSize += data.byteLength;
+
+        progress.value =
+            (receivedSize / incomingFile.size) * 100;
+    }
+}
+
+function copyID() {
+
+    const id = document.getElementById("myId").innerText;
+
+    navigator.clipboard.writeText(id)
+        .then(() => alert("ID copied!"))
+        .catch(() => alert("Please copy your ID manually: " + id));
+}
+
+</script>
+
+</body>
+</html>
