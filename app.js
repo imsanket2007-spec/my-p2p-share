@@ -114,56 +114,81 @@ function updateConnectionUI(connected) {
   $("sendBtn").disabled = !connected || selectedFiles.length === 0;
 }
 
+function generateShortId() {
+  const chars = "abcdefghjkmnpqrstuvwxyz23456789";
+  const random = new Uint8Array(5);
+  crypto.getRandomValues(random);
+
+  return Array.from(random)
+    .map(byte => chars[byte % chars.length])
+    .join("");
+}
+
 function setupPeer() {
   if (!window.Peer) {
-    setStatus("PeerJS library could not load. Refresh the page.");
+    setStatus("PeerJS library could not load.");
     return;
   }
 
-  peer = new Peer(undefined, {
-    config: {
-      iceServers: [
-        { urls: "stun:stun.l.google.com:19302" },
-        { urls: "stun:stun1.l.google.com:19302" }
-      ]
-    }
-  });
+  let attempts = 0;
 
-  peer.on("open", id => {
-    $("myId").textContent = id;
-    $("networkStatus").textContent = "● Online";
-    $("peerStatus").textContent = "Ready";
-    setStatus("Your device is ready.");
-    $("qrcode").innerHTML = "";
+  function createPeer() {
+    const shortId = generateShortId();
 
-    if (window.QRCode) {
-      new QRCode($("qrcode"), {
-        text: id,
-        width: 150,
-        height: 150
-      });
-    }
-  });
+    peer = new Peer(shortId, {
+      config: {
+        iceServers: [
+          { urls: "stun:stun.l.google.com:19302" },
+          { urls: "stun:stun1.l.google.com:19302" }
+        ]
+      }
+    });
 
-  peer.on("connection", conn => {
-    if (connection && connection.open) {
-      conn.close();
-      return;
-    }
-    attachConnection(conn);
-  });
+    peer.on("open", id => {
+      $("myId").textContent = id;
+      $("networkStatus").textContent = "● Online";
+      $("peerStatus").textContent = "Ready";
+      setStatus("Your short device ID is ready.");
 
-  peer.on("error", error => {
-    console.error(error);
-    setStatus("Connection error: " + error.type);
-    $("networkStatus").textContent = "● Connection issue";
-  });
+      $("qrcode").innerHTML = "";
 
-  peer.on("disconnected", () => {
-    $("networkStatus").textContent = "● Disconnected";
-    setStatus("Signalling connection lost. Reconnecting...");
-    peer.reconnect();
-  });
+      if (window.QRCode) {
+        new QRCode($("qrcode"), {
+          text: id,
+          width: 150,
+          height: 150
+        });
+      }
+    });
+
+    peer.on("connection", conn => {
+      if (connection && connection.open) {
+        conn.close();
+        return;
+      }
+      attachConnection(conn);
+    });
+
+    peer.on("error", error => {
+      if (error.type === "unavailable-id" && attempts < 5) {
+        attempts++;
+        peer.destroy();
+        createPeer();
+        return;
+      }
+
+      console.error(error);
+      setStatus("Connection error: " + error.type);
+    });
+
+    peer.on("disconnected", () => {
+      $("networkStatus").textContent = "● Disconnected";
+      setStatus("Reconnecting...");
+      peer.reconnect();
+    });
+  }
+
+  createPeer();
 }
 
 function attachConnection(conn) {
