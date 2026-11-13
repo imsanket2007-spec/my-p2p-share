@@ -1,291 +1,200 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>My P2P Share</title>
-
-<script src="https://unpkg.com/peerjs@1.5.5/dist/peerjs.min.js"></script>
-
-<style>
-* {
-  box-sizing: border-box;
-}
-
-body {
-  margin: 0;
-  font-family: Arial, sans-serif;
-  background: #101827;
-  color: white;
-  text-align: center;
-}
-
-.container {
-  max-width: 500px;
-  margin: 50px auto;
-  padding: 25px;
-}
-
-h1 {
-  color: #38bdf8;
-}
-
-.card {
-  background: #1e293b;
-  padding: 22px;
-  border-radius: 15px;
-  margin: 20px 0;
-}
-
-input, button {
-  width: 100%;
-  padding: 13px;
-  margin: 9px 0;
-  border-radius: 8px;
-  border: none;
-  font-size: 15px;
-}
-
-input {
-  background: white;
-  color: black;
-}
-
-button {
-  background: #0284c7;
-  color: white;
-  cursor: pointer;
-}
-
-button:hover {
-  background: #0369a1;
-}
-
-#myId {
-  color: #38bdf8;
-  word-break: break-all;
-}
-
-#status {
-  color: #4ade80;
-}
-
-progress {
-  width: 100%;
-}
-
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#080d19">
+  <title>My P2P Share | Ultimate</title>
+  <link rel="stylesheet" href="style.css">
 </head>
-
 <body>
 
-<div class="container">
+<header class="topbar">
+  <div class="brand">
+    <div class="brand-icon">⚡</div>
+    <div>
+      <h1>My P2P Share</h1>
+      <small>ULTIMATE EDITION</small>
+    </div>
+  </div>
+  <div class="top-actions">
+    <span id="networkStatus" class="status-badge">Connecting...</span>
+    <button id="themeBtn" class="icon-btn" title="Change theme">🌙</button>
+  </div>
+</header>
 
-<h1>My P2P Share</h1>
-<p>Fast and direct file sharing</p>
+<main class="main-container">
 
-<div class="card">
-<h3>Your Device ID</h3>
-<p id="myId">Connecting...</p>
-<button onclick="copyID()">Copy My ID</button>
-</div>
+  <section class="hero">
+    <div>
+      <span class="eyebrow">PRIVATE • DIRECT • SIMPLE</span>
+      <h2>Transfer without limits.<br><span>Connect directly.</span></h2>
+      <p>Share files between devices using peer-to-peer technology.</p>
+    </div>
+    <div class="hero-symbol">⇄</div>
+  </section>
 
-<div class="card">
-<h3>Connect Device</h3>
-<input id="remoteId" placeholder="Enter receiver's ID">
-<button onclick="connectPeer()">Connect</button>
-</div>
+  <section class="dashboard-grid">
 
-<div class="card">
-<h3>Send File</h3>
-<input type="file" id="fileInput">
-<button onclick="sendFile()">Send File</button>
-</div>
+    <article class="card device-card">
+      <div class="card-heading">
+        <div>
+          <span class="section-label">YOUR DEVICE</span>
+          <h3>Device identity</h3>
+        </div>
+        <span class="live-dot">● Online</span>
+      </div>
 
-<div class="card">
-<h3>Transfer Status</h3>
-<p id="status">Waiting for connection...</p>
-<progress id="progress" value="0" max="100"></progress>
-</div>
+      <div class="device-id-box">
+        <span id="myId">Generating ID...</span>
+        <button id="copyIdBtn" class="secondary-btn">Copy ID</button>
+      </div>
 
-</div>
+      <p id="statusText" class="muted">Connecting to signalling service...</p>
 
-<script>
+      <div class="qr-area">
+        <div id="qrcode">QR code will appear here</div>
+        <p>Scan this code to connect from another device.</p>
+      </div>
+    </article>
 
-let peer = new Peer();
-let connection = null;
-let receivedChunks = [];
-let receivedSize = 0;
-let incomingFile = null;
+    <article class="card connect-card">
+      <span class="section-label">CONNECTION</span>
+      <h3>Connect another device</h3>
+      <p class="muted">Enter the device ID of the person you want to send files to.</p>
 
-const statusText = document.getElementById("status");
-const progress = document.getElementById("progress");
+      <label for="remoteId">Receiver device ID</label>
+      <input id="remoteId" type="text" placeholder="Paste device ID here">
 
-peer.on("open", function(id) {
-    document.getElementById("myId").innerText = id;
-    statusText.innerText = "Ready to connect";
-});
+      <button id="connectBtn" class="primary-btn">Connect Device →</button>
+      <button id="scanBtn" class="secondary-btn full-btn">📷 Scan QR Code</button>
 
-peer.on("connection", function(conn) {
-    connection = conn;
-    setupConnection(conn);
-});
+      <div id="connectionStatus" class="connection-info">
+        No device connected
+      </div>
 
-peer.on("error", function(error) {
-    statusText.innerText = "Error: " + error.type;
-});
+      <div id="reader" class="scanner"></div>
+    </article>
 
-function connectPeer() {
+  </section>
 
-    let id = document.getElementById("remoteId").value.trim();
+  <section class="card transfer-card">
+    <div class="card-heading">
+      <div>
+        <span class="section-label">FILE SHARING</span>
+        <h3>Send files</h3>
+      </div>
+      <span class="feature-tag">P2P TRANSFER</span>
+    </div>
 
-    if (!id) {
-        alert("Enter device ID");
-        return;
-    }
+    <div class="upload-area">
+      <div class="upload-icon">📁</div>
+      <h3>Select files to share</h3>
+      <p class="muted">Choose one or multiple files from your device.</p>
 
-    connection = peer.connect(id);
-    setupConnection(connection);
+      <input type="file" id="fileInput" multiple hidden>
+      <button id="chooseFilesBtn" class="primary-btn">Choose Files</button>
 
-    statusText.innerText = "Connecting...";
-}
+      <input type="file" id="folderInput" webkitdirectory multiple hidden>
+      <button id="chooseFolderBtn" class="secondary-btn">Choose Folder</button>
 
-function setupConnection(conn) {
+      <p id="fileInfo" class="muted">No files selected</p>
+    </div>
 
-    conn.on("open", function() {
-        statusText.innerText = "Connected successfully!";
-    });
+    <div class="selected-files">
+      <h4>Selected files</h4>
+      <div id="selectedFiles">No files selected yet.</div>
+    </div>
 
-    conn.on("data", function(data) {
-        receiveData(data);
-    });
+    <button id="sendBtn" class="send-btn" disabled>⚡ Send Files</button>
+  </section>
 
-    conn.on("close", function() {
-        statusText.innerText = "Connection closed";
-        connection = null;
-    });
+  <section class="card">
+    <div class="card-heading">
+      <div>
+        <span class="section-label">LIVE ACTIVITY</span>
+        <h3>Transfer center</h3>
+      </div>
+      <span id="transferCount" class="feature-tag">0 TRANSFERS</span>
+    </div>
 
-    conn.on("error", function(error) {
-        statusText.innerText = "Connection error";
-    });
-}
+    <div id="transferList">
+      <div class="empty-state">
+        <div>📡</div>
+        <p>No active transfers</p>
+      </div>
+    </div>
+  </section>
 
-async function sendFile() {
+  <section class="card">
+    <div class="card-heading">
+      <div>
+        <span class="section-label">INCOMING FILES</span>
+        <h3>Received files</h3>
+      </div>
+    </div>
+    <div id="receivedFiles">
+      <div class="empty-state">
+        <div>📥</div>
+        <p>Received files will appear here.</p>
+      </div>
+    </div>
+  </section>
 
-    if (!connection || !connection.open) {
-        alert("Connect to another device first");
-        return;
-    }
+  <section class="card">
+    <div class="card-heading">
+      <div>
+        <span class="section-label">RECENT ACTIVITY</span>
+        <h3>Transfer history</h3>
+      </div>
+      <button id="clearHistoryBtn" class="secondary-btn">Clear history</button>
+    </div>
+    <div id="history">
+      <div class="empty-state">
+        <div>📜</div>
+        <p>No transfer history yet.</p>
+      </div>
+    </div>
+  </section>
 
-    const file = document.getElementById("fileInput").files[0];
+  <section class="card settings-card">
+    <span class="section-label">PREFERENCES</span>
+    <h3>Transfer settings</h3>
 
-    if (!file) {
-        alert("Select a file first");
-        return;
-    }
+    <div class="setting-row">
+      <div>
+        <strong>Connection information</strong>
+        <p class="muted">View the current connection status.</p>
+      </div>
+      <span id="peerStatus">Initializing</span>
+    </div>
 
-    if (file.size > 100 * 1024 * 1024) {
-        alert("This beginner version supports files up to 100 MB.");
-        return;
-    }
+    <div class="setting-row">
+      <div>
+        <strong>Transfer encryption</strong>
+        <p class="muted">WebRTC encrypts data channels in transit.</p>
+      </div>
+      <span>DTLS</span>
+    </div>
 
-    connection.send({
-        type: "file-meta",
-        name: file.name,
-        size: file.size,
-        mime: file.type || "application/octet-stream"
-    });
+    <p class="security-note">
+      Only accept files from devices you trust. Never open unexpected files.
+      Transfer history is stored locally in this browser.
+    </p>
+  </section>
 
-    const chunkSize = 16 * 1024;
-    let sent = 0;
+</main>
 
-    statusText.innerText = "Sending file...";
+<footer>
+  <h3>⚡ My P2P Share</h3>
+  <p>Direct device-to-device file sharing.</p>
+  <small>Ultimate Edition</small>
+</footer>
 
-    while (sent < file.size) {
-
-        if (!connection || !connection.open) {
-            statusText.innerText = "Connection lost";
-            return;
-        }
-
-        const chunk = await file.slice(
-            sent, sent + chunkSize
-        ).arrayBuffer();
-
-        connection.send(chunk);
-
-        sent += chunk.byteLength;
-
-        progress.value = (sent / file.size) * 100;
-
-        await new Promise(resolve => setTimeout(resolve, 5));
-    }
-
-    connection.send({ type: "file-end" });
-
-    statusText.innerText = "File sent successfully!";
-}
-
-function receiveData(data) {
-
-    if (data && data.type === "file-meta") {
-
-        incomingFile = data;
-        receivedChunks = [];
-        receivedSize = 0;
-
-        progress.value = 0;
-
-        statusText.innerText = "Receiving: " + data.name;
-
-        return;
-    }
-
-    if (data && data.type === "file-end") {
-
-        if (!incomingFile) return;
-
-        const blob = new Blob(receivedChunks, {
-            type: incomingFile.mime
-        });
-
-        const url = URL.createObjectURL(blob);
-
-        const link = document.createElement("a");
-        link.href = url;
-        link.download = incomingFile.name;
-        link.click();
-
-        setTimeout(() => URL.revokeObjectURL(url), 60000);
-
-        statusText.innerText = "File received successfully!";
-
-        receivedChunks = [];
-        incomingFile = null;
-
-        return;
-    }
-
-    if (incomingFile && data instanceof ArrayBuffer) {
-
-        receivedChunks.push(data);
-        receivedSize += data.byteLength;
-
-        progress.value =
-            (receivedSize / incomingFile.size) * 100;
-    }
-}
-
-function copyID() {
-
-    const id = document.getElementById("myId").innerText;
-
-    navigator.clipboard.writeText(id)
-        .then(() => alert("ID copied!"))
-        .catch(() => alert("Please copy your ID manually: " + id));
-}
-
-</script>
+<script src="https://unpkg.com/peerjs@1.5.5/dist/peerjs.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<script src="app.js"></script>
 
 </body>
 </html>
